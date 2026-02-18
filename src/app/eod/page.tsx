@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 
 type TxStatus = "No Doc" | "Pending" | "Done";
 
@@ -524,8 +525,8 @@ export default function EODPage() {
           </div>
           <span className="clock-time">{clockStr}</span>
           <span className="clock-ampm">{clockAMPM}</span>
-          <a href="/analytics" className="back-link">📊 Analytics</a>
-          <a href="/" className="back-link">← TX Log</a>
+          <Link href="/analytics" className="back-link">📊 Analytics</Link>
+<Link href="/" className="back-link">← TX Log</Link>
         </div>
       </nav>
 

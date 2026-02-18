@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 type TxStatus = "No Doc" | "Pending" | "Done";
 
@@ -545,7 +546,7 @@ export default function TrackerPage() {
           </div>
           <span className="clock-time">{clockStr}</span>
           <span className="clock-ampm">{clockAMPM}</span>
-          <a href="/eod" className="eod-link">📊 EOD</a>
+          <Link href="/eod" className="eod-link">📊 EOD</Link>
         </div>
       </nav>
 

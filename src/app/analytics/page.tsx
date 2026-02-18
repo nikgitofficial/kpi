@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 
 interface Agent {
   _id: string;
@@ -540,8 +541,8 @@ export default function AnalyticsPage() {
             <button className="workspace-change" onClick={handleChangeEmail}>✕</button>
           </div>
           <span className="clock-time">{clockStr}</span>
-          <a href="/eod" className="back-link">📊 EOD</a>
-          <a href="/" className="back-link">← TX Log</a>
+          <Link href="/eod" className="back-link">📊 EOD</Link>
+<Link href="/" className="back-link">← TX Log</Link>
         </div>
       </nav>
 

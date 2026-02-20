@@ -547,6 +547,7 @@ export default function TrackerPage() {
           <span className="clock-time">{clockStr}</span>
           <span className="clock-ampm">{clockAMPM}</span>
           <Link href="/eod" className="eod-link">📊 EOD</Link>
+          <Link href="/analytics" className="eod-link">📈 Analytics</Link>
         </div>
       </nav>
 

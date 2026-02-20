@@ -160,12 +160,22 @@ export default function TrackerPage() {
     } catch { /* silent */ }
   }, []);
 
-  const handleEnterEmail = (email: string) => {
-    sessionStorage.setItem("kpiEmail", email);
-    setKpiEmail(email);
-    fetchAgents(email);
-    fetchDocTypes(email);
-  };
+ const handleEnterEmail = async (email: string) => {
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    alert("Login failed");
+    return;
+  }
+
+  setKpiEmail(email);
+  fetchAgents(email);
+  fetchDocTypes(email);
+};
 
   const handleChangeEmail = () => {
     sessionStorage.removeItem("kpiEmail");

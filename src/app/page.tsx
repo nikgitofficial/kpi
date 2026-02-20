@@ -93,6 +93,11 @@ export default function TrackerPage() {
   const [message, setMessage]             = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [deletingId, setDeletingId]       = useState<string | null>(null);
 
+  // ── ADDED: selected date for transactions ──
+  const [selectedDate, setSelectedDate]   = useState<string>(
+    new Date().toISOString().split("T")[0]
+  );
+
   // Sidebar tab: "agents" | "doctypes"
   const [sidebarTab, setSidebarTab]       = useState<"agents" | "doctypes">("agents");
 
@@ -253,11 +258,12 @@ export default function TrackerPage() {
   };
 
   // ── Fetch transactions ────────────────────────────────────────
-  const fetchTransactions = useCallback(async (agent: Agent, workspaceEmail: string) => {
+  // ── UPDATED: accepts optional date param ──
+  const fetchTransactions = useCallback(async (agent: Agent, workspaceEmail: string, date?: string) => {
     setFetching(true);
     try {
-      const today = new Date().toISOString().split("T")[0];
-      const res = await fetch(`/api/transactions?workspaceEmail=${encodeURIComponent(workspaceEmail)}&name=${encodeURIComponent(agent.name)}&date=${today}&limit=100`);
+      const useDate = date || new Date().toISOString().split("T")[0];
+      const res = await fetch(`/api/transactions?workspaceEmail=${encodeURIComponent(workspaceEmail)}&name=${encodeURIComponent(agent.name)}&date=${useDate}&limit=100`);
       const data = await res.json();
       const recs: Transaction[] = data.records || [];
       setTransactions(recs);
@@ -268,8 +274,16 @@ export default function TrackerPage() {
 
   const handleAgentSelect = (agent: Agent) => {
     setSelectedAgent(agent);
-    if (kpiEmail) fetchTransactions(agent, kpiEmail);
+    if (kpiEmail) fetchTransactions(agent, kpiEmail, selectedDate);
   };
+
+  // ── ADDED: re-fetch when date changes ──
+  useEffect(() => {
+    if (selectedAgent && kpiEmail) {
+      fetchTransactions(selectedAgent, kpiEmail, selectedDate);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
 
   // ── Start transaction ─────────────────────────────────────────
   const handleStart = async () => {
@@ -281,14 +295,15 @@ export default function TrackerPage() {
     try {
       const res = await fetch("/api/transactions", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentName: selectedAgent.name, workspaceEmail: kpiEmail, action: "start", txId: txId.trim(), typeOfDoc, startTime, status, notes }),
+        // ── UPDATED: pass selectedDate ──
+        body: JSON.stringify({ agentName: selectedAgent.name, workspaceEmail: kpiEmail, action: "start", txId: txId.trim(), typeOfDoc, startTime, status, notes, date: selectedDate }),
       });
       const data = await res.json();
       if (!res.ok) { setMessage({ text: data.error, type: "error" }); return; }
       setMessage({ text: data.message, type: "success" });
       setTxId(""); setNotes("");
       setStartTime(nowTimeStr()); setEndTime(nowTimeStr());
-      await fetchTransactions(selectedAgent, kpiEmail);
+      await fetchTransactions(selectedAgent, kpiEmail, selectedDate);
     } catch { setMessage({ text: "Network error", type: "error" }); }
     finally { setLoading(false); }
   };
@@ -306,7 +321,7 @@ export default function TrackerPage() {
       if (!res.ok) { setMessage({ text: data.error, type: "error" }); return; }
       setMessage({ text: data.message, type: "success" });
       setNotes(""); setStatus("Pending"); setEndTime(nowTimeStr());
-      await fetchTransactions(selectedAgent, kpiEmail);
+      await fetchTransactions(selectedAgent, kpiEmail, selectedDate);
     } catch { setMessage({ text: "Network error", type: "error" }); }
     finally { setLoading(false); }
   };
@@ -317,12 +332,15 @@ export default function TrackerPage() {
     setDeletingId(id);
     await fetch("/api/transactions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     setDeletingId(null);
-    if (selectedAgent && kpiEmail) await fetchTransactions(selectedAgent, kpiEmail);
+    if (selectedAgent && kpiEmail) await fetchTransactions(selectedAgent, kpiEmail, selectedDate);
   };
 
   const clockStr  = mounted && now ? now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }) : "--:--:--";
   const clockAMPM = mounted && now ? now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true  }) : "--:--:-- --";
   const todayDate = mounted && now ? now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : "";
+
+  // ── ADDED: formatted label for selected date ──
+  const selectedDateLabel = new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   const doneTx    = transactions.filter((t) => t.status === "Done").length;
   const pendingTx = transactions.filter((t) => t.status === "Pending").length;
@@ -450,6 +468,13 @@ export default function TrackerPage() {
         .agent-fullname { font-size: 19px; font-weight: 800; letter-spacing: -0.5px; }
         .agent-date-str { font-size: 11px; color: var(--text-3); font-family: 'Fira Code', monospace; margin-top: 2px; }
 
+        /* ── ADDED: date picker row ── */
+        .date-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 10px 16px; box-shadow: var(--shadow); flex-wrap: wrap; }
+        .date-row-label { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-3); flex-shrink: 0; }
+        .date-row-input { background: var(--surface-2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 6px 11px; font-family: 'Fira Code', monospace; font-size: 13px; color: var(--text); outline: none; transition: all 0.15s; }
+        .date-row-input:focus { border-color: var(--indigo); background: #fff; }
+        .date-row-today { font-family: 'Fira Code', monospace; font-size: 10px; color: var(--green); font-weight: 700; background: var(--green-lt); border: 1px solid #86efac; padding: 2px 8px; border-radius: 20px; }
+
         .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
         .stat-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 13px 14px; box-shadow: var(--shadow); }
         .stat-label { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-3); margin-bottom: 5px; }
@@ -500,8 +525,9 @@ export default function TrackerPage() {
         .table-card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1.5px solid var(--border); background: var(--surface-2); }
         .table-card-title { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-2); }
         .table-scroll { overflow-x: auto; }
+        .table-body-scroll { max-height: 418px; overflow-y: auto; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 680px; font-size: 12px; }
-        thead { background: var(--surface-2); }
+        thead { background: var(--surface-2); position: sticky; top: 0; z-index: 2; }
         th { padding: 9px 11px; text-align: left; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-3); border-bottom: 1.5px solid var(--border); white-space: nowrap; }
         td { padding: 9px 11px; border-bottom: 1px solid var(--surface-2); white-space: nowrap; vertical-align: middle; }
         tbody tr:last-child td { border-bottom: none; }
@@ -685,8 +711,23 @@ export default function TrackerPage() {
                 </div>
                 <div>
                   <div className="agent-fullname">{selectedAgent.name}</div>
-                  <div className="agent-date-str">{todayDate}</div>
+                  {/* ── UPDATED: show selected date label instead of always-today ── */}
+                  <div className="agent-date-str">{selectedDateLabel}</div>
                 </div>
+              </div>
+
+              {/* ── ADDED: Date picker ── */}
+              <div className="date-row">
+                <span className="date-row-label">📅 Date</span>
+                <input
+                  className="date-row-input"
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                />
+                {selectedDate === new Date().toISOString().split("T")[0] && (
+                  <span className="date-row-today">Today</span>
+                )}
               </div>
 
               <div className="stats-row">
@@ -778,7 +819,8 @@ export default function TrackerPage() {
                 {/* TABLE */}
                 <div className="table-card">
                   <div className="table-card-header">
-                    <span className="table-card-title">Today&apos;s Log</span>
+                    {/* ── UPDATED: show selected date in table header ── */}
+                    <span className="table-card-title">Log — {selectedDateLabel}</span>
                     <span style={{ fontSize: 11, color: "var(--text-3)", fontFamily: "Fira Code" }}>{transactions.length} transactions</span>
                   </div>
                   {fetching ? (
@@ -786,10 +828,10 @@ export default function TrackerPage() {
                   ) : transactions.length === 0 ? (
                     <div className="empty-state">
                       <div className="empty-icon">📋</div>
-                      <div className="empty-text">No transactions logged today</div>
+                      <div className="empty-text">No transactions logged for this date</div>
                     </div>
                   ) : (
-                    <div className="table-scroll">
+                    <div className="table-body-scroll">
                       <table>
                         <thead>
                           <tr><th>#</th><th>ID</th><th>Type of Doc</th><th>Start</th><th>End</th><th>TAT</th><th>Status</th><th>Notes</th><th>Decimal</th><th></th></tr>
